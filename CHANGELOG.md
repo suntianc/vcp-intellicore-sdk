@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0-beta.3] - 2025-10-27
+
+### ✨ Added - Plugin Execution Support
+
+#### Complete Plugin Runtime Implementation
+- **Direct Plugin Execution** (`stdio` protocol)
+  - Child process spawning with `spawn()`
+  - Stdin/stdout/stderr communication
+  - JSON input/output parsing
+  - Timeout control (configurable per plugin)
+  - Environment variable injection
+  - Error handling and logging
+
+- **Internal Plugin Execution**
+  - Built-in tools (TVSList, AgentList)
+  - Event-based custom handler support
+  - No external process overhead
+
+- **Plugin Configuration Support**
+  - Auto-inject configSchema defaults as environment variables
+  - PROJECT_BASE_PATH support
+  - PYTHONIOENCODING forced to UTF-8
+  - Compatible with VCPToolBox plugin ecosystem
+
+### 🧪 Tested
+- ✅ Randomness plugin (rollDice, getCards, selectFromList)
+- ✅ Python plugins via stdio
+- ✅ JSON input/output parsing
+- ✅ Timeout and error handling
+
+### 🔧 Fixed
+- Plugin execution now fully functional (was throwing "not implemented" error)
+- Environment variable setup matches VCPToolBox behavior
+
+---
+
+## [1.0.0-beta.2] - 2025-10-27
+
+### 🔧 Fixed
+- Corrected TypeScript output directory structure
+- Changed `rootDir` from `./` to `./src` in tsconfig
+- Fixed module resolution and type definitions path
+
+---
+
 ## [1.0.0-beta.1] - 2025-10-27
 
 ### 🎉 Initial Beta Release

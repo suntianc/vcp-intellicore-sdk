@@ -1,6 +1,6 @@
 {
   "name": "vcp-intellicore-sdk",
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.3",
   "description": "VCP (Variable & Command Protocol) SDK - Core modules for building VCP-compatible AI servers with tool calling, variable resolution, and plugin management",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
