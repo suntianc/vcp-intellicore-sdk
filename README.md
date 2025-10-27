@@ -1,8 +1,10 @@
-# @vcp/sdk
+# vcp-intellicore-sdk
+
+**English** | [简体中文](./README.zh-CN.md)
 
 > **VCP (Variable & Command Protocol) SDK** - Core modules for building VCP-compatible AI servers with tool calling, variable resolution, and plugin management.
 
-[![npm version](https://img.shields.io/npm/v/@vcp/sdk.svg)](https://www.npmjs.com/package/@vcp/sdk)
+[![npm version](https://img.shields.io/npm/v/vcp-intellicore-sdk.svg)](https://www.npmjs.com/package/vcp-intellicore-sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
 
@@ -15,7 +17,7 @@ VCP SDK provides the **core building blocks** for creating AI servers that suppo
 - 🔧 **Tool Calling** - Parse and execute AI tool requests using VCP protocol
 - 🔄 **Variable Resolution** - Dynamic placeholder replacement with recursion support
 - 🔌 **Plugin Management** - Manage 6 types of plugins (distributed, direct, preprocessor, service, static, internal)
-- 📡 **WebSocket Push** - Real-time tool execution status and async results
+- 📡 **WebSocket Communication** - 5 specialized channels for real-time communication
 - 🎯 **100% VCPToolBox Compatible** - Full compatibility with existing VCP ecosystem
 
 ---
@@ -25,7 +27,7 @@ VCP SDK provides the **core building blocks** for creating AI servers that suppo
 ### Installation
 
 ```bash
-npm install @vcp/sdk
+npm install vcp-intellicore-sdk@beta
 ```
 
 ### Basic Usage
@@ -33,38 +35,39 @@ npm install @vcp/sdk
 ```typescript
 import { 
   createVariableEngine, 
-  createPluginRuntime,
-  VCPProtocolParser,
+  PluginRuntime,
+  createVCPProtocolParser,
   TimeProvider,
   ToolDescriptionProvider
-} from '@vcp/sdk';
+} from 'vcp-intellicore-sdk';
 
 // 1. Create Variable Engine
 const variableEngine = createVariableEngine();
 variableEngine.registerProvider(new TimeProvider());
 
 // 2. Create Plugin Runtime
-const pluginRuntime = createPluginRuntime();
+const pluginRuntime = new PluginRuntime({ pluginDir: './Plugin' });
+
+// 3. Register Plugin
 await pluginRuntime.registerPlugin({
-  id: 'MyTool',
-  name: 'My Tool',
-  version: '1.0.0',
-  type: 'distributed',
+  id: 'Randomness',
+  name: 'Randomness',
+  version: '5.2.0',
+  description: 'Random event generator',
+  type: 'direct',
   capabilities: {
-    invocationCommands: [
-      {
-        command: 'do_something',
-        description: 'Does something useful'
-      }
-    ]
+    invocationCommands: [{
+      command: 'rollDice',
+      description: 'Roll dice'
+    }]
   }
 });
 
-// 3. Use Protocol Parser
-const parser = new VCPProtocolParser();
+// 4. Use Protocol Parser
+const parser = createVCPProtocolParser();
 const toolRequests = parser.parseToolRequests(aiResponse);
 
-// 4. Execute tools
+// 5. Execute Tools
 for (const req of toolRequests) {
   const result = await pluginRuntime.executePlugin(req.name, req.args);
   console.log(result);
@@ -73,7 +76,7 @@ for (const req of toolRequests) {
 
 ---
 
-## 📦 Modules
+## 📦 Core Modules
 
 ### 🎨 Types Module
 
@@ -87,7 +90,7 @@ import {
   PluginManifest,
   VCPError,
   VCPErrorCode
-} from '@vcp/sdk/types';
+} from 'vcp-intellicore-sdk';
 ```
 
 **Features**:
@@ -103,17 +106,17 @@ import {
 VCP protocol parsing and formatting:
 
 ```typescript
-import { VCPProtocolParser } from '@vcp/sdk/protocol';
+import { createVCPProtocolParser } from 'vcp-intellicore-sdk';
 
-const parser = new VCPProtocolParser();
+const parser = createVCPProtocolParser();
 
 // Parse tool requests from AI response
 const requests = parser.parseToolRequests(content);
 // => [{ name: 'ToolName', args: { key: 'value' } }]
 
 // Format tool result for AI
-const formatted = parser.formatToolResult('ToolName', result);
-// => "来自工具 \"ToolName\" 的结果:\n..."
+const formatted = parser.formatToolResult(result);
+// => "Result from tool \"ToolName\":\n..."
 
 // Check if content has tool requests
 const hasCalls = parser.hasToolRequests(content);
@@ -122,7 +125,7 @@ const hasCalls = parser.hasToolRequests(content);
 **Protocol Markers**:
 ```
 <<<[TOOL_REQUEST]>>>
-ToolName
+tool_name: 「始」ToolName「末」
 param1: 「始」value1「末」
 param2: 「始」value2「末」
 <<<[END_TOOL_REQUEST]>>>
@@ -141,7 +144,7 @@ import {
   EnvironmentProvider,
   PlaceholderProvider,
   ToolDescriptionProvider
-} from '@vcp/sdk/variable';
+} from 'vcp-intellicore-sdk';
 
 const engine = createVariableEngine({
   enableRecursion: true,
@@ -178,38 +181,35 @@ const result = await engine.resolveAll('Current time: {{DateTime}}, User: {{ENV_
 Complete plugin runtime system:
 
 ```typescript
-import { createPluginRuntime, PluginManifest } from '@vcp/sdk/plugin';
+import { PluginRuntime, PluginManifest } from 'vcp-intellicore-sdk';
 
-const runtime = createPluginRuntime({ debug: true });
+const runtime = new PluginRuntime({ 
+  pluginDir: './Plugin',
+  debug: true 
+});
 
-// Register a distributed plugin
+// Register plugin
 await runtime.registerPlugin({
   id: 'Calculator',
-  name: 'Math Calculator',
+  name: 'Calculator',
   version: '1.0.0',
-  type: 'distributed',
+  description: 'Math calculator tool',
+  type: 'direct',
+  main: 'calculator.py',
   capabilities: {
-    invocationCommands: [
-      {
-        command: 'calculate',
-        description: 'Performs mathematical calculations',
-        example: 'calculate "2+2"',
-        parameters: {
-          expression: 'Mathematical expression to evaluate'
-        }
-      }
-    ]
+    invocationCommands: [{
+      command: 'calculate',
+      description: 'Performs mathematical calculations',
+      example: 'calculate "2+2"'
+    }]
   }
 });
 
-// Set distributed executor (for distributed tools)
-runtime.setDistributedExecutor(async (serverId, toolName, args) => {
-  // Your WebSocket communication logic
-  return await webSocketServer.executeDistributedTool(serverId, toolName, args);
-});
-
 // Execute plugin
-const result = await runtime.executePlugin('Calculator', { expression: '2+2' });
+const result = await runtime.executePlugin('Calculator', { 
+  command: 'calculate',
+  expression: '2+2' 
+});
 
 // Get tool descriptions (for AI prompt)
 const descriptions = runtime.getToolDescriptions();
@@ -218,23 +218,69 @@ console.log(descriptions.get('VCPCalculator'));
 
 **Supported Plugin Types**:
 
-1. **Distributed** - Tools executed on remote nodes via WebSocket
-2. **Direct** - Direct protocol plugins (e.g., ChromeControl)
-3. **Preprocessor** - Message preprocessing pipeline
-4. **Service** - Reusable service modules
-5. **Static** - Static placeholder providers
-6. **Internal** - System built-in tools
+| Type | Description | Use Case |
+|------|-------------|----------|
+| **direct** | stdio protocol plugins | Python/Node.js scripts |
+| **distributed** | Remote distributed tools | Tools on remote nodes |
+| **internal** | Built-in tools | System internal functions |
+| **preprocessor** | Message preprocessors | Message preprocessing pipeline |
+| **service** | Service modules | Reusable services |
+| **static** | Static plugins | Static placeholder providers |
+
+---
+
+### 📡 Communication Module
+
+Complete WebSocket management system:
+
+```typescript
+import {
+  WebSocketManager,
+  VCPLogChannelSDK,
+  DistributedServerChannelSDK,
+  FileFetcher
+} from 'vcp-intellicore-sdk';
+
+// Create WebSocket manager
+const wsManager = new WebSocketManager();
+wsManager.initialize(httpServer);
+
+// Register channels
+const vcpLogChannel = new VCPLogChannelSDK();
+wsManager.registerChannel(vcpLogChannel);
+
+// Push logs
+vcpLogChannel.pushToolLog({
+  status: 'success',
+  tool: 'Randomness',
+  content: 'Dice roll result: 6',
+  source: 'tool_execution'
+});
+
+// FileFetcher - Cross-node file transfer
+const fileFetcher = new FileFetcher(distributedChannel);
+const file = await fileFetcher.fetchFile('/path/to/file', 'server-id');
+```
+
+**5 WebSocket Channels**:
+
+1. **VCPLog** - Real-time log pushing
+2. **VCPInfo** - Debug information
+3. **DistributedServer** - Distributed node communication
+4. **ChromeObserver** - Chrome extension connection
+5. **AdminPanel** - Admin panel connection
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-@vcp/sdk
-├── types/           TypeScript interfaces & error codes
-├── protocol/        VCP protocol parser
-├── variable/        Variable engine + 4 providers
-└── plugin/          Plugin runtime + 6 plugin types
+vcp-intellicore-sdk
+├── types/            TypeScript interfaces & error codes
+├── protocol/         VCP protocol parser
+├── variable/         Variable engine + 4 providers
+├── plugin/           Plugin runtime + 6 plugin types
+└── communication/    WebSocket manager + 5 channels + FileFetcher
 
 Integration Flow:
 User Message → Variable Resolution → Tool Parsing → Tool Execution → Result Formatting → AI Response
@@ -249,9 +295,9 @@ User Message → Variable Resolution → Tool Parsing → Tool Execution → Res
 
 - **[API Reference](./docs/API.md)** - Complete API documentation
 - **[Developer Guide](./docs/GUIDE.md)** - How to use VCP SDK
-- **[Type Definitions](./docs/TYPES.md)** - TypeScript type reference
-- **[Advanced Usage](./docs/ADVANCED.md)** - Advanced patterns and best practices
-- **[Examples](./examples/)** - 5 runnable examples
+- **[Communication Guide](./docs/COMMUNICATION.md)** - WebSocket communication details
+- **[Plugin Development](./docs/PLUGIN_DEVELOPMENT.md)** - How to develop VCP plugins
+- **[Examples](./examples/)** - 7 runnable examples
 
 ---
 
@@ -260,14 +306,14 @@ User Message → Variable Resolution → Tool Parsing → Tool Execution → Res
 ### Example 1: Protocol Parser
 
 ```typescript
-import { VCPProtocolParser } from '@vcp/sdk';
+import { createVCPProtocolParser } from 'vcp-intellicore-sdk';
 
-const parser = new VCPProtocolParser();
+const parser = createVCPProtocolParser();
 const aiResponse = `
-I'll help you with that.
+I'll check the weather for you.
 
 <<<[TOOL_REQUEST]>>>
-WeatherTool
+tool_name: 「始」WeatherTool「末」
 city: 「始」Beijing「末」
 <<<[END_TOOL_REQUEST]>>>
 `;
@@ -279,7 +325,7 @@ const requests = parser.parseToolRequests(aiResponse);
 ### Example 2: Variable Engine with Recursion
 
 ```typescript
-import { createVariableEngine, PlaceholderProvider } from '@vcp/sdk';
+import { createVariableEngine, PlaceholderProvider } from 'vcp-intellicore-sdk';
 
 const engine = createVariableEngine({
   enableRecursion: true,
@@ -297,12 +343,12 @@ const result = await engine.resolveAll('Message: {{Greeting}}');
 // => "Message: Welcome to My App!"
 ```
 
-### Example 3: Plugin Runtime with Events
+### Example 3: Plugin Runtime Events
 
 ```typescript
-import { createPluginRuntime } from '@vcp/sdk';
+import { PluginRuntime } from 'vcp-intellicore-sdk';
 
-const runtime = createPluginRuntime();
+const runtime = new PluginRuntime();
 
 // Listen to events
 runtime.on('plugin_registered', ({ plugin }) => {
@@ -319,6 +365,22 @@ runtime.on('plugin_error', ({ plugin, error }) => {
 
 // Register plugin
 await runtime.registerPlugin({ /* manifest */ });
+```
+
+### Example 4: Distributed Tools Management
+
+```typescript
+// Batch register tools from distributed node
+runtime.registerDistributedTools('node-1', [
+  { name: 'RemoteTool1', ... },
+  { name: 'RemoteTool2', ... }
+]);
+
+// Execute distributed tool
+const result = await runtime.executePlugin('RemoteTool1', args);
+
+// Unregister all tools when node disconnects
+runtime.unregisterAllDistributedTools('node-1');
 ```
 
 ---
@@ -340,6 +402,7 @@ await runtime.registerPlugin({ /* manifest */ });
 - DoS protection (max 100 placeholders)
 - Timeout enforcement
 - Error code standardization
+- Child process isolation
 
 ### 🚀 Performance
 
@@ -349,100 +412,7 @@ await runtime.registerPlugin({ /* manifest */ });
 | Protocol parsing | <2ms | ~20KB |
 | Plugin registration | <5ms | ~100KB |
 | Tool execution | <1ms (excl. network) | ~10KB |
-
----
-
-## 🔧 Advanced Usage
-
-### Custom Variable Provider
-
-```typescript
-import { IVariableProvider } from '@vcp/sdk';
-
-class MyCustomProvider implements IVariableProvider {
-  name = 'MyCustomProvider';
-  
-  async resolve(key: string): Promise<string | null> {
-    if (key === 'CustomVar') {
-      return 'Custom Value';
-    }
-    return null;
-  }
-}
-
-engine.registerProvider(new MyCustomProvider());
-```
-
-### Plugin Timeout Configuration
-
-```typescript
-const plugin: PluginManifest = {
-  id: 'SlowTool',
-  type: 'distributed',
-  // ...other fields
-  timeout: 60000  // 60 seconds timeout
-};
-
-await runtime.registerPlugin(plugin);
-```
-
-### Message Preprocessing
-
-```typescript
-const preprocessorPlugin: PluginManifest = {
-  id: 'MyPreprocessor',
-  type: 'preprocessor',
-  processor: async (messages) => {
-    // Modify messages before sending to LLM
-    return messages.map(msg => ({
-      ...msg,
-      content: msg.content.toUpperCase()
-    }));
-  }
-};
-
-await runtime.registerPlugin(preprocessorPlugin);
-const processed = await runtime.processMessages(messages);
-```
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
-
-### Development Setup
-
-```bash
-# Clone repository
-git clone https://github.com/vcp-project/vcp-sdk.git
-cd vcp-sdk
-
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Run tests
-npm test
-```
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](./LICENSE) for details
-
----
-
-## 🔗 Links
-
-- **VCP IntelliCore**: Full-featured VCP server implementation
-- **VCPToolBox**: Original VCP server
-- **VCPChat**: VCP-compatible chat client
-- **Documentation**: [Full API Docs](./docs/API.md)
-- **Examples**: [Example Projects](./examples/)
+| Direct plugin execution | ~100-200ms | ~5MB |
 
 ---
 
@@ -464,23 +434,125 @@ MIT License - see [LICENSE](./LICENSE) for details
 
 ---
 
+## 🛠️ Development
+
+### Setup
+
+```bash
+# Clone repository
+git clone https://github.com/suntianc/vcp-intellicore-sdk.git
+cd vcp-intellicore-sdk
+
+# Install dependencies
+npm install
+
+# Build
+npm run build
+
+# Run tests
+npm test
+```
+
+### Project Structure
+
+```
+vcp-intellicore-sdk/
+├── src/                     # Source code
+│   ├── types/              # Type definitions
+│   ├── protocol/           # Protocol parser
+│   ├── variable/           # Variable engine
+│   ├── plugin/             # Plugin runtime
+│   ├── communication/      # WebSocket communication
+│   └── index.ts           # Main entry
+├── tests/                  # Test files
+├── docs/                   # Documentation
+├── examples/               # Example code
+└── dist/                   # Build output
+```
+
+---
+
 ## 📊 Status
 
 ```
-Version: 1.0.0-beta.1 (Beta)
+Version: 1.0.0-beta.5 (Beta)
 Status: Production-ready, VCPChat verified
-Test Coverage: 100% (40 test scenarios)
+Test Coverage: 100% (core features)
 VCPToolBox Compatibility: 100%
 Performance: Optimized (87-94% improvement)
 ```
 
 ---
 
+## 🔗 Related Projects
+
+- **VCP IntelliCore**: Full-featured VCP server implementation
+- **VCPToolBox**: Original VCP server
+- **VCPChat**: VCP-compatible chat client
+- **Documentation**: [Full API Docs](./docs/API.md)
+- **Examples**: [Example Projects](./examples/)
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+
+### Contribution Guidelines
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](./LICENSE) for details
+
+---
+
 ## 🙋 Support
 
-- **Issues**: [GitHub Issues](https://github.com/vcp-project/vcp-sdk/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/vcp-project/vcp-sdk/discussions)
+- **Issues**: [GitHub Issues](https://github.com/suntianc/vcp-intellicore-sdk/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/suntianc/vcp-intellicore-sdk/discussions)
 - **Documentation**: [API Docs](./docs/API.md)
+
+---
+
+## 🎯 Roadmap
+
+### v1.0.0 (Coming Soon)
+- [x] Protocol parser module
+- [x] Variable engine module
+- [x] Plugin runtime module
+- [x] Communication module (WebSocket + FileFetcher)
+- [x] Direct plugin execution
+- [x] Distributed plugin execution
+- [x] Internal plugin execution
+- [ ] Service/Preprocessor plugin execution
+- [ ] Plugin auto-discovery
+- [ ] Hot-reload support
+
+### v1.1.0 (Planned)
+- [ ] CLI tools (`vcp-cli`)
+- [ ] TypeScript plugin support
+- [ ] Plugin development toolchain
+- [ ] Visual debugging tools
+
+### v2.0.0 (Future)
+- [ ] Plugin marketplace
+- [ ] Multi-language SDKs (Go/Rust/Python)
+- [ ] Cloud plugin hosting
+- [ ] WebUI management interface
+
+---
+
+## 📈 Version History
+
+See full version history and changelog: [CHANGELOG.md](./CHANGELOG.md)
 
 ---
 

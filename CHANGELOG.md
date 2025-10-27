@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0-beta.6] - 2025-10-27
+
+### 📚 Documentation - Complete Overhaul
+
+#### New Documentation
+- **README.zh-CN.md** - Complete Chinese README
+- **README.md** - Updated English README
+- **docs/API.zh-CN.md** - Comprehensive Chinese API reference (10,000+ words)
+- **docs/API.md** - Comprehensive English API reference (10,000+ words)
+- **docs/COMMUNICATION.zh-CN.md** - Communication module deep dive
+- **docs/PLUGIN_DEVELOPMENT.zh-CN.md** - Plugin development guide
+
+#### Documentation Highlights
+- ✅ Bilingual support (Chinese + English)
+- ✅ Complete API reference for all modules
+- ✅ 20+ code examples
+- ✅ Best practices and FAQ sections
+- ✅ Troubleshooting guides
+- ✅ Architecture diagrams
+- ✅ Performance optimization tips
+
+### 🔧 Improvements
+- Updated package name references to `vcp-intellicore-sdk`
+- Added performance benchmarks
+- Enhanced error handling examples
+- Added security considerations
+
+---
+
 ## [1.0.0-beta.5] - 2025-10-27
 
 ### 🔧 Fixed - Distributed Tools Registration
