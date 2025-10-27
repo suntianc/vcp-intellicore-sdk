@@ -534,8 +534,23 @@ vcp-intellicore-sdk/
 
 ---
 
+## 📊 当前状态
+
+```
+版本: 1.0.0-beta.5 (Beta)
+状态: 生产就绪，已通过VCPChat验证
+测试覆盖: 100% (核心功能)
+VCPToolBox兼容性: 100%
+性能: 优化完成 (87-94%提升)
+```
+
+---
+
 ## 🔗 相关链接
 
+- **[VCP IntelliCore](https://github.com/suntianc/vcp-intellicore)** - 完整的VCP服务器实现（暂未发布）
+- **[VCPToolBox](https://github.com/lioensky/VCPToolBox)** - 原始VCP服务器（450+ ⭐）
+- **[VCPChat](https://github.com/lioensky/VCPChat)** - VCP兼容的聊天客户端
 - **文档**: [完整API文档](./docs/API.zh-CN.md)
 - **示例**: [示例项目](./examples/)
 
@@ -585,10 +600,28 @@ MIT License - 详见 [LICENSE](./LICENSE)
 
 ---
 
+## 🙏 致谢
+
+本项目基于 [@lioensky](https://github.com/lioensky) 的 [VCPToolBox](https://github.com/lioensky/VCPToolBox) 项目开发。
+
+**特别感谢**：
+- 🎯 **@lioensky** - VCP协议和生态系统的原创设计者
+- 🌟 **VCPToolBox** - 提供了完整的VCP实现思路和架构
+- 💬 **VCPChat** - 为VCP协议提供了优秀的客户端实现
+
+**致敬原文**：
+> VCPToolBox 是一个全新的，强大的AI-API-工具交互范式AGI社群系统。独立多Agent封装，非线性超异步工作流，交叉记忆网络，六大插件协议，完整Websocket和WebDav功能，支持分布式部署和算力均衡！
+
+本项目在VCPToolBox的基础上，使用TypeScript重构了核心模块，提供了更好的类型安全性和开发体验。
+
+---
+
 ## 📈 版本历史
 
 查看完整的版本历史和更新日志：[CHANGELOG.md](./CHANGELOG.md)
 
 ---
+
+**由 VCP 团队用 ❤️ 打造，致敬 @lioensky 的原创贡献**
 
 

@@ -486,9 +486,9 @@ Performance: Optimized (87-94% improvement)
 
 ## 🔗 Related Projects
 
-- **VCP IntelliCore**: Full-featured VCP server implementation
-- **VCPToolBox**: Original VCP server
-- **VCPChat**: VCP-compatible chat client
+- **[VCP IntelliCore](https://github.com/suntianc/vcp-intellicore)** - Full-featured VCP server implementation
+- **[VCPToolBox](https://github.com/lioensky/VCPToolBox)** - Original VCP server (450+ ⭐)
+- **[VCPChat](https://github.com/lioensky/VCPChat)** - VCP-compatible chat client
 - **Documentation**: [Full API Docs](./docs/API.md)
 - **Examples**: [Example Projects](./examples/)
 
@@ -550,11 +550,27 @@ MIT License - see [LICENSE](./LICENSE) for details
 
 ---
 
+## 🙏 Acknowledgments
+
+This project is built upon [@lioensky](https://github.com/lioensky)'s [VCPToolBox](https://github.com/lioensky/VCPToolBox) project.
+
+**Special Thanks**:
+- 🎯 **@lioensky** - Original designer of the VCP protocol and ecosystem
+- 🌟 **VCPToolBox** - Provided the complete VCP implementation ideas and architecture
+- 💬 **VCPChat** - Excellent client implementation for the VCP protocol
+
+**Original Description**:
+> VCPToolBox is a brand new, powerful AI-API-tool interaction paradigm AGI community system. Independent multi-Agent encapsulation, non-linear ultra-asynchronous workflow, cross-memory network, six plugin protocols, complete WebSocket and WebDav functionality, supporting distributed deployment and computing power balancing!
+
+This project refactors the core modules using TypeScript on top of VCPToolBox, providing better type safety and developer experience.
+
+---
+
 ## 📈 Version History
 
 See full version history and changelog: [CHANGELOG.md](./CHANGELOG.md)
 
 ---
 
-**Built with ❤️ by the VCP Team**
+**Built with ❤️ by the VCP Team, honoring @lioensky's original contribution**
 
