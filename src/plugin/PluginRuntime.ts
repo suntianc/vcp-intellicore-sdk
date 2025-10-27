@@ -252,29 +252,34 @@ export class PluginRuntime extends EventEmitter implements IPluginRuntime {
     logger.info(`[PluginRuntime] Registering ${tools.length} tools from distributed server: ${serverId}`);
     
     for (const toolManifest of tools) {
-      if (!toolManifest.name || !toolManifest.id) {
-        logger.warn(`[PluginRuntime] Invalid manifest from ${serverId} for tool. Skipping.`);
+      // VCPToolBox工具用name作为唯一标识，可能没有id字段
+      const toolId = toolManifest.id || toolManifest.name;
+      const toolName = toolManifest.name;
+      
+      if (!toolName) {
+        logger.warn(`[PluginRuntime] Invalid manifest from ${serverId} (missing name). Skipping.`);
         continue;
       }
       
-      if (this.plugins.has(toolManifest.id)) {
-        logger.warn(`[PluginRuntime] Distributed tool '${toolManifest.id}' from ${serverId} conflicts with existing tool. Skipping.`);
+      if (this.plugins.has(toolId)) {
+        logger.warn(`[PluginRuntime] Distributed tool '${toolId}' from ${serverId} conflicts with existing tool. Skipping.`);
         continue;
       }
       
       // 标记为分布式插件并存储服务器ID
       const distributedManifest = {
         ...toolManifest,
+        id: toolId,  // 确保有id字段
         type: 'distributed' as const,
         serverId,
-        name: `[云端] ${toolManifest.name}`,
+        // 保持原name，让显示层添加前缀（如果需要）
       };
       
       // 存储到分布式工具表和总插件表
-      this.distributedTools.set(toolManifest.id, distributedManifest);
-      this.plugins.set(toolManifest.id, distributedManifest);
+      this.distributedTools.set(toolId, distributedManifest);
+      this.plugins.set(toolId, distributedManifest);
       
-      logger.info(`[PluginRuntime] Registered distributed tool: ${distributedManifest.name} (${toolManifest.id}) from ${serverId}`);
+      logger.info(`[PluginRuntime] Registered distributed tool: ${toolName} (${toolId}) from ${serverId}`);
     }
     
     // 重建工具描述

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0-beta.5] - 2025-10-27
+
+### 🔧 Fixed - Distributed Tools Registration
+
+#### Bug Fixes
+- **Fixed registerDistributedTools validation** - Now accepts tools with only `name` field (no `id` required)
+- VCPToolBox distributed tools use `name` as the unique identifier
+- Fallback logic: use `name` as `id` if `id` is not provided
+- All 13 distributed tools from VCPChat now register successfully
+
+### 🧪 Tested
+- ✅ Distributed node connection with 13 tools
+- ✅ Tool validation and registration
+- ✅ VCPChat distributed tools compatibility
+
+---
+
 ## [1.0.0-beta.4] - 2025-10-27
 
 ### ✨ Added - Distributed Tools Management
