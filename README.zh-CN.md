@@ -622,6 +622,6 @@ MIT License - 详见 [LICENSE](./LICENSE)
 
 ---
 
-**由 VCP 团队用 ❤️ 打造，致敬 @lioensky 的原创贡献**
+**由 VCP Agent 团队用 ❤️ 打造，致敬 @lioensky 的原创贡献**
 
 

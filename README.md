@@ -572,5 +572,5 @@ See full version history and changelog: [CHANGELOG.md](./CHANGELOG.md)
 
 ---
 
-**Built with ❤️ by the VCP Team, honoring @lioensky's original contribution**
+**Built with ❤️ by the VCP Agent Team, honoring @lioensky's original contribution**
 
