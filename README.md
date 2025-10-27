@@ -536,17 +536,6 @@ MIT License - see [LICENSE](./LICENSE) for details
 - [ ] Plugin auto-discovery
 - [ ] Hot-reload support
 
-### v1.1.0 (Planned)
-- [ ] CLI tools (`vcp-cli`)
-- [ ] TypeScript plugin support
-- [ ] Plugin development toolchain
-- [ ] Visual debugging tools
-
-### v2.0.0 (Future)
-- [ ] Plugin marketplace
-- [ ] Multi-language SDKs (Go/Rust/Python)
-- [ ] Cloud plugin hosting
-- [ ] WebUI management interface
 
 ---
 
