@@ -1,0 +1,60 @@
+{
+  "name": "vcp-intellicore-sdk",
+  "version": "1.0.0-beta.1",
+  "description": "VCP (Variable & Command Protocol) SDK - Core modules for building VCP-compatible AI servers with tool calling, variable resolution, and plugin management",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.sdk.json",
+    "test": "jest",
+    "prepublishOnly": "npm run build",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "vcp",
+    "protocol",
+    "ai",
+    "tools",
+    "plugin",
+    "sdk",
+    "variable",
+    "llm",
+    "chatbot",
+    "tool-calling"
+  ],
+  "author": "VCP Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vcp-project/vcp-intellicore-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vcp-project/vcp-intellicore-sdk/issues"
+  },
+  "homepage": "https://github.com/vcp-project/vcp-intellicore-sdk#readme",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "dependencies": {
+    "events": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.4",
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.18.1",
+    "jest": "^29.0.0",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

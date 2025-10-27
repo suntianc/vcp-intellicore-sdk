@@ -1,0 +1,638 @@
+/**
+ * VCP Plugin Runtime
+ * 
+ * 插件运行时环境，负责插件的生命周期管理、执行和通信
+ * 
+ * @module @vcp/sdk/plugin
+ */
+
+import { EventEmitter } from 'events';
+import {
+  IPluginRuntime,
+  PluginManifest,
+  VCPError,
+  VCPErrorCode,
+} from '../types';
+import { logger } from '../utils/logger';
+
+/**
+ * 插件运行时配置
+ */
+export interface PluginRuntimeOptions {
+  /** 插件目录路径 */
+  pluginDir?: string;
+  /** 是否启用调试模式 */
+  debug?: boolean;
+  /** 是否自动发现插件 */
+  autoDiscover?: boolean;
+}
+
+/**
+ * 插件运行时实现
+ * 
+ * 核心功能：
+ * - 插件注册与管理
+ * - 工具执行路由
+ * - 工具描述生成
+ * - 6种插件类型支持
+ * - WebSocket推送支持
+ * 
+ * 基于VCPToolBox的Plugin.js实现
+ * 参考：D:/VCPToolBox/Plugin.js
+ */
+export class PluginRuntime extends EventEmitter implements IPluginRuntime {
+  // 插件存储
+  private plugins: Map<string, PluginManifest>;
+  private distributedTools: Map<string, PluginManifest>;
+  
+  // 工具描述缓存
+  private individualPluginDescriptions: Map<string, string>;
+  
+  // 各类型插件存储
+  private messagePreprocessors: Map<string, any>;
+  private preprocessorOrder: string[];
+  private serviceModules: Map<string, any>;
+  private staticPlaceholderValues: Map<string, string>;
+  
+  // 配置
+  private options: PluginRuntimeOptions;
+  private debug: boolean;
+  
+  // 依赖注入
+  private distributedExecutor?: (serverId: string, toolName: string, args: any) => Promise<any>;
+  
+  constructor(options: PluginRuntimeOptions = {}) {
+    super();
+    
+    this.plugins = new Map();
+    this.distributedTools = new Map();
+    this.individualPluginDescriptions = new Map();
+    this.messagePreprocessors = new Map();
+    this.preprocessorOrder = [];
+    this.serviceModules = new Map();
+    this.staticPlaceholderValues = new Map();
+    
+    this.options = options;
+    this.debug = options.debug || false;
+    
+    logger.info('[PluginRuntime] Initializing VCP Plugin Runtime...');
+  }
+  
+  /**
+   * 注入分布式工具执行器
+   * 
+   * @param executor - 分布式工具执行函数
+   */
+  setDistributedExecutor(executor: (serverId: string, toolName: string, args: any) => Promise<any>): void {
+    this.distributedExecutor = executor;
+    logger.info('[PluginRuntime] Distributed executor has been set');
+  }
+  
+  /**
+   * 注册插件
+   * 
+   * 参考：Plugin.js Line 600-700
+   * 
+   * @param manifest - 插件清单
+   */
+  async registerPlugin(manifest: PluginManifest): Promise<void> {
+    try {
+      // 验证清单
+      this.validateManifest(manifest);
+      
+      // 根据插件类型处理
+      switch (manifest.type) {
+        case 'distributed':
+          await this.registerDistributedPlugin(manifest);
+          break;
+          
+        case 'direct':
+          await this.registerDirectPlugin(manifest);
+          break;
+          
+        case 'preprocessor':
+          await this.registerPreprocessorPlugin(manifest);
+          break;
+          
+        case 'service':
+          await this.registerServicePlugin(manifest);
+          break;
+          
+        case 'static':
+          await this.registerStaticPlugin(manifest);
+          break;
+          
+        case 'internal':
+          await this.registerInternalPlugin(manifest);
+          break;
+          
+        default:
+          throw new VCPError(
+            VCPErrorCode.INVALID_PLUGIN_MANIFEST,
+            `Unknown plugin type: ${manifest.type}`,
+            { manifest },
+          );
+      }
+      
+      // 存储到插件表
+      this.plugins.set(manifest.id, manifest);
+      
+      // 重建工具描述
+      this.rebuildVCPDescriptions();
+      
+      logger.info(`[PluginRuntime] Plugin registered: ${manifest.name} (${manifest.type})`);
+      
+      // 发射事件
+      this.emit('plugin_registered', { plugin: manifest });
+      
+    } catch (error) {
+      logger.error(`[PluginRuntime] Failed to register plugin ${manifest.id}:`, error);
+      throw new VCPError(
+        VCPErrorCode.PLUGIN_LOAD_ERROR,
+        `Failed to register plugin: ${manifest.id}`,
+        { error, manifest },
+      );
+    }
+  }
+  
+  /**
+   * 执行插件
+   * 
+   * 参考：Plugin.js Line 574-850 (processToolCall)
+   * 
+   * @param name - 插件/工具名称
+   * @param args - 执行参数
+   * @returns 执行结果
+   */
+  async executePlugin(name: string, args: any): Promise<any> {
+    const plugin = this.plugins.get(name) || this.distributedTools.get(name);
+    
+    if (!plugin) {
+      throw new VCPError(
+        VCPErrorCode.TOOL_NOT_FOUND,
+        `Plugin "${name}" not found`,
+        { name, availablePlugins: Array.from(this.plugins.keys()) },
+      );
+    }
+    
+    try {
+      logger.info(`[PluginRuntime] Executing plugin: ${name} (${plugin.type})`);
+      logger.debug(`[PluginRuntime] Args: ${JSON.stringify(args)}`);
+      
+      // 根据插件类型路由执行
+      let result: any;
+      
+      if (plugin.type === 'distributed') {
+        result = await this.executeDistributedPlugin(plugin, name, args);
+      } else if (plugin.type === 'direct') {
+        result = await this.executeDirectPlugin(plugin, args);
+      } else if (plugin.type === 'internal') {
+        result = await this.executeInternalPlugin(plugin, args);
+      } else {
+        throw new VCPError(
+          VCPErrorCode.TOOL_EXECUTION_FAILED,
+          `Plugin type "${plugin.type}" cannot be executed directly`,
+          { plugin: name, type: plugin.type },
+        );
+      }
+      
+      logger.info(`[PluginRuntime] Plugin executed successfully: ${name}`);
+      
+      // 发射事件
+      this.emit('plugin_executed', { plugin: name, result });
+      
+      return result;
+      
+    } catch (error) {
+      logger.error(`[PluginRuntime] Plugin execution failed: ${name}`, error);
+      
+      // 发射错误事件
+      this.emit('plugin_error', { plugin: name, error });
+      
+      throw new VCPError(
+        VCPErrorCode.TOOL_EXECUTION_FAILED,
+        `Plugin execution failed: ${name}`,
+        { error, plugin: name },
+      );
+    }
+  }
+  
+  /**
+   * 获取所有工具描述
+   * 
+   * @returns 工具名称到描述的映射
+   */
+  getToolDescriptions(): Map<string, string> {
+    return new Map(this.individualPluginDescriptions);
+  }
+  
+  /**
+   * 获取单个插件的描述
+   * 
+   * @param name - 插件名称
+   * @returns 插件描述文本
+   */
+  getIndividualPluginDescription(name: string): string | null {
+    const key = `VCP${name}`;
+    return this.individualPluginDescriptions.get(key) || null;
+  }
+  
+  /**
+   * 卸载插件
+   * 
+   * @param name - 插件名称
+   */
+  async unloadPlugin(name: string): Promise<void> {
+    const plugin = this.plugins.get(name);
+    
+    if (!plugin) {
+      logger.warn(`[PluginRuntime] Plugin ${name} not found for unloading`);
+      return;
+    }
+    
+    // 根据类型清理
+    if (plugin.type === 'distributed') {
+      this.distributedTools.delete(name);
+    } else if (plugin.type === 'preprocessor') {
+      this.messagePreprocessors.delete(name);
+      const index = this.preprocessorOrder.indexOf(name);
+      if (index > -1) {
+        this.preprocessorOrder.splice(index, 1);
+      }
+    } else if (plugin.type === 'service') {
+      this.serviceModules.delete(name);
+    }
+    
+    // 从主表删除
+    this.plugins.delete(name);
+    
+    // 重建描述
+    this.rebuildVCPDescriptions();
+    
+    logger.info(`[PluginRuntime] Plugin unloaded: ${name}`);
+    
+    // 发射事件
+    this.emit('plugin_unloaded', { plugin: name });
+  }
+  
+  /**
+   * 获取所有已注册的插件
+   * 
+   * @returns 插件清单数组
+   */
+  getPlugins(): PluginManifest[] {
+    return Array.from(this.plugins.values());
+  }
+  
+  // ========== 私有方法 ==========
+  
+  /**
+   * 验证插件清单
+   * 
+   * @param manifest - 插件清单
+   */
+  private validateManifest(manifest: PluginManifest): void {
+    if (!manifest.id) {
+      throw new VCPError(
+        VCPErrorCode.INVALID_PLUGIN_MANIFEST,
+        'Plugin manifest missing required field: id',
+        { manifest },
+      );
+    }
+    
+    if (!manifest.name) {
+      throw new VCPError(
+        VCPErrorCode.INVALID_PLUGIN_MANIFEST,
+        'Plugin manifest missing required field: name',
+        { manifest },
+      );
+    }
+    
+    if (!manifest.type) {
+      throw new VCPError(
+        VCPErrorCode.INVALID_PLUGIN_MANIFEST,
+        'Plugin manifest missing required field: type',
+        { manifest },
+      );
+    }
+  }
+  
+  /**
+   * 注册分布式插件
+   * 
+   * 参考：Plugin.js registerDistributedTools
+   * 
+   * @param manifest - 插件清单
+   */
+  private async registerDistributedPlugin(manifest: PluginManifest): Promise<void> {
+    if (!manifest.capabilities?.invocationCommands) {
+      logger.warn(`[PluginRuntime] Distributed plugin ${manifest.id} has no invocationCommands`);
+      return;
+    }
+    
+    // 存储到分布式工具表
+    this.distributedTools.set(manifest.id, manifest);
+    
+    logger.debug(
+      `[PluginRuntime] Registered distributed plugin: ${manifest.id} with ${manifest.capabilities.invocationCommands.length} commands`,
+    );
+  }
+  
+  /**
+   * 注册直接协议插件
+   * 
+   * 参考：Plugin.js Line 615-624 (ChromeControl等)
+   * 
+   * @param manifest - 插件清单
+   */
+  private async registerDirectPlugin(manifest: PluginManifest): Promise<void> {
+    // Direct协议插件（如ChromeControl）通过WebSocket直接通信
+    // 存储到插件表即可，执行时会通过direct executor处理
+    logger.debug(`[PluginRuntime] Registered direct plugin: ${manifest.id}`);
+  }
+  
+  /**
+   * 注册预处理器插件
+   * 
+   * @param manifest - 插件清单
+   */
+  private async registerPreprocessorPlugin(manifest: PluginManifest): Promise<void> {
+    // 预处理器按顺序执行
+    this.messagePreprocessors.set(manifest.id, manifest);
+    this.preprocessorOrder.push(manifest.id);
+    logger.debug(`[PluginRuntime] Registered preprocessor: ${manifest.id}, order: ${this.preprocessorOrder.length}`);
+  }
+  
+  /**
+   * 注册服务插件
+   * 
+   * @param manifest - 插件清单
+   */
+  private async registerServicePlugin(manifest: PluginManifest): Promise<void> {
+    // 服务插件提供可复用的功能模块
+    this.serviceModules.set(manifest.id, {
+      manifest,
+      module: (manifest as any).module, // 实际服务实例
+    });
+    logger.debug(`[PluginRuntime] Registered service plugin: ${manifest.id}`);
+  }
+  
+  /**
+   * 注册静态插件
+   * 
+   * @param manifest - 插件清单
+   */
+  private async registerStaticPlugin(manifest: PluginManifest): Promise<void> {
+    // 静态插件提供占位符值
+    if ((manifest as any).placeholders) {
+      for (const [key, value] of Object.entries((manifest as any).placeholders)) {
+        this.staticPlaceholderValues.set(key, value as string);
+      }
+    }
+    logger.debug(`[PluginRuntime] Registered static plugin: ${manifest.id}, placeholders: ${(manifest as any).placeholders ? Object.keys((manifest as any).placeholders).length : 0}`);
+  }
+  
+  /**
+   * 注册内部工具
+   * 
+   * @param manifest - 插件清单
+   */
+  private async registerInternalPlugin(manifest: PluginManifest): Promise<void> {
+    // 内部工具是系统内置的工具
+    logger.debug(`[PluginRuntime] Registered internal tool: ${manifest.id}`);
+  }
+  
+  /**
+   * 执行分布式插件
+   * 
+   * 参考：Plugin.js Line 607-614
+   * 
+   * @param plugin - 插件清单
+   * @param name - 工具名称
+   * @param args - 执行参数
+   * @returns 执行结果
+   */
+  private async executeDistributedPlugin(plugin: PluginManifest, name: string, args: any): Promise<any> {
+    if (!this.distributedExecutor) {
+      throw new VCPError(
+        VCPErrorCode.DISTRIBUTED_CONNECTION_ERROR,
+        'Distributed executor not set',
+        { plugin: name },
+      );
+    }
+    
+    logger.debug(`[PluginRuntime] Executing distributed plugin: ${name}`);
+    
+    // 调用分布式执行器
+    const serverId = (plugin as any).serverId || 'unknown';
+    
+    // 添加超时控制
+    const timeout = (plugin as any).timeout || 30000; // 默认30秒
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new VCPError(
+        VCPErrorCode.TOOL_EXECUTION_FAILED,
+        `Tool execution timeout after ${timeout}ms`,
+        { plugin: name },
+      )), timeout);
+    });
+    
+    try {
+      const result = await Promise.race([
+        this.distributedExecutor(serverId, name, args),
+        timeoutPromise,
+      ]);
+      
+      return result;
+    } catch (error: any) {
+      if (error.code === VCPErrorCode.TOOL_EXECUTION_FAILED && error.message.includes('timeout')) {
+        logger.warn(`[PluginRuntime] Tool ${name} timed out after ${timeout}ms`);
+      }
+      throw error;
+    }
+  }
+  
+  /**
+   * 执行直接协议插件
+   * 
+   * @param plugin - 插件清单
+   * @param args - 执行参数
+   * @returns 执行结果
+   */
+  private async executeDirectPlugin(plugin: PluginManifest, args: any): Promise<any> {
+    // Direct插件执行的具体实现（Day 18）
+    throw new VCPError(
+      VCPErrorCode.TOOL_EXECUTION_FAILED,
+      'Direct plugin execution not implemented yet',
+      { plugin: plugin.id },
+    );
+  }
+  
+  /**
+   * 执行内部工具
+   * 
+   * @param plugin - 插件清单
+   * @param args - 执行参数
+   * @returns 执行结果
+   */
+  private async executeInternalPlugin(plugin: PluginManifest, args: any): Promise<any> {
+    // Internal工具执行的具体实现（Day 19）
+    throw new VCPError(
+      VCPErrorCode.TOOL_EXECUTION_FAILED,
+      'Internal plugin execution not implemented yet',
+      { plugin: plugin.id },
+    );
+  }
+  
+  /**
+   * 重建VCP工具描述
+   * 
+   * 参考：Plugin.js Line 508-543 (buildVCPDescription)
+   * 
+   * 核心逻辑：
+   * 1. 清空现有描述
+   * 2. 遍历所有插件
+   * 3. 提取invocationCommands
+   * 4. 格式化描述文本
+   * 5. 存储到individualPluginDescriptions
+   */
+  private rebuildVCPDescriptions(): void {
+    this.individualPluginDescriptions.clear();
+    
+    let descriptionCount = 0;
+    
+    for (const plugin of this.plugins.values()) {
+      // 检查插件是否有invocationCommands
+      if (!plugin.capabilities?.invocationCommands || plugin.capabilities.invocationCommands.length === 0) {
+        continue;
+      }
+      
+      const pluginDescriptions: string[] = [];
+      
+      // 遍历每个命令
+      for (const cmd of plugin.capabilities.invocationCommands) {
+        if (!cmd.description) {
+          continue;
+        }
+        
+        // 格式化命令描述
+        let commandDescription = `- ${plugin.name} (${plugin.id}) - 命令: ${cmd.command || 'N/A'}:\n`;
+        
+        // 添加缩进的描述
+        const indentedDescription = cmd.description
+          .split('\n')
+          .map(line => `    ${line}`)
+          .join('\n');
+        commandDescription += indentedDescription;
+        
+        // 添加示例（如果有）
+        if (cmd.example) {
+          commandDescription += `\n  调用示例:\n`;
+          const indentedExample = cmd.example
+            .split('\n')
+            .map(line => `    ${line}`)
+            .join('\n');
+          commandDescription += indentedExample;
+        }
+        
+        pluginDescriptions.push(commandDescription);
+      }
+      
+      // 存储插件描述
+      if (pluginDescriptions.length > 0) {
+        const placeholderKey = `VCP${plugin.id}`;
+        const fullDescription = pluginDescriptions.join('\n\n');
+        this.individualPluginDescriptions.set(placeholderKey, fullDescription);
+        
+        descriptionCount++;
+        
+        if (this.debug) {
+          logger.debug(
+            `[PluginRuntime] Generated description for {{${placeholderKey}}} (${fullDescription.length} chars)`,
+          );
+        }
+      }
+    }
+    
+    logger.info(
+      `[PluginRuntime] VCP descriptions rebuilt: ${descriptionCount} tools, ${this.individualPluginDescriptions.size} descriptions`,
+    );
+  }
+  
+  /**
+   * 处理消息（通过所有预处理器）
+   * 
+   * @param messages - 原始消息数组
+   * @returns 处理后的消息
+   */
+  async processMessages(messages: any[]): Promise<any[]> {
+    let processedMessages = messages;
+    
+    for (const preprocessorId of this.preprocessorOrder) {
+      const preprocessor = this.messagePreprocessors.get(preprocessorId);
+      if (preprocessor && (preprocessor as any).processor) {
+        try {
+          processedMessages = await (preprocessor as any).processor(processedMessages);
+          logger.debug(`[PluginRuntime] Messages processed by: ${preprocessorId}`);
+        } catch (error) {
+          logger.error(`[PluginRuntime] Preprocessor ${preprocessorId} failed:`, error);
+        }
+      }
+    }
+    
+    return processedMessages;
+  }
+  
+  /**
+   * 获取服务模块
+   * 
+   * @param name - 服务名称
+   * @returns 服务实例
+   */
+  getServiceModule(name: string): any {
+    const service = this.serviceModules.get(name);
+    return service?.module;
+  }
+  
+  /**
+   * 获取静态占位符值
+   * 
+   * @returns 占位符映射
+   */
+  getStaticPlaceholders(): Map<string, string> {
+    return new Map(this.staticPlaceholderValues);
+  }
+  
+  /**
+   * 获取运行时统计信息
+   * 
+   * @returns 统计信息
+   */
+  getStats(): {
+    totalPlugins: number;
+    distributedPlugins: number;
+    localPlugins: number;
+    toolDescriptions: number;
+    preprocessors: number;
+    services: number;
+  } {
+    return {
+      totalPlugins: this.plugins.size,
+      distributedPlugins: this.distributedTools.size,
+      localPlugins: this.plugins.size - this.distributedTools.size,
+      toolDescriptions: this.individualPluginDescriptions.size,
+      preprocessors: this.messagePreprocessors.size,
+      services: this.serviceModules.size,
+    };
+  }
+}
+
+/**
+ * 创建默认的插件运行时实例
+ * 
+ * @param options - 可选配置
+ * @returns 插件运行时实例
+ */
+export function createPluginRuntime(options?: PluginRuntimeOptions): IPluginRuntime {
+  return new PluginRuntime(options);
+}
+

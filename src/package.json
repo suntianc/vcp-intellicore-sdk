@@ -1,0 +1,60 @@
+{
+  "name": "@vcp/sdk",
+  "version": "1.0.0-beta.2",
+  "description": "VCP (Variable & Command Protocol) SDK - Core modules for building VCP-compatible AI servers with tool calling, variable resolution, and plugin management",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.sdk.json",
+    "test": "jest",
+    "prepublishOnly": "npm run build",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "vcp",
+    "protocol",
+    "ai",
+    "tools",
+    "plugin",
+    "sdk",
+    "variable",
+    "llm",
+    "chatbot",
+    "tool-calling"
+  ],
+  "author": "VCP Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vcp-project/vcp-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vcp-project/vcp-sdk/issues"
+  },
+  "homepage": "https://github.com/vcp-project/vcp-sdk#readme",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "dependencies": {
+    "events": "^3.3.0"
+  },
+  "peerDependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "jest": "^29.0.0",
+    "@types/jest": "^29.0.0",
+    "rimraf": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}
+
