@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0-beta.4] - 2025-10-27
+
+### ✨ Added - Distributed Tools Management
+
+#### New Public APIs
+- **`registerDistributedTools(serverId, tools)`** - Batch register tools from distributed nodes
+- **`unregisterAllDistributedTools(serverId)`** - Cleanup tools when node disconnects
+
+### 🔧 Improved
+- Better error handling for distributed plugin registration
+- Auto-prefix distributed tools with [云端] tag
+- Conflict detection for duplicate tool names
+
+---
+
 ## [1.0.0-beta.3] - 2025-10-27
 
 ### ✨ Added - Plugin Execution Support

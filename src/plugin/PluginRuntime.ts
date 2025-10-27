@@ -241,6 +241,75 @@ export class PluginRuntime extends EventEmitter implements IPluginRuntime {
   }
   
   /**
+   * 批量注册来自分布式节点的工具
+   * 
+   * 参考：Plugin.js Line 1031-1055 (registerDistributedTools)
+   * 
+   * @param serverId - 分布式服务器ID
+   * @param tools - 工具清单数组
+   */
+  registerDistributedTools(serverId: string, tools: PluginManifest[]): void {
+    logger.info(`[PluginRuntime] Registering ${tools.length} tools from distributed server: ${serverId}`);
+    
+    for (const toolManifest of tools) {
+      if (!toolManifest.name || !toolManifest.id) {
+        logger.warn(`[PluginRuntime] Invalid manifest from ${serverId} for tool. Skipping.`);
+        continue;
+      }
+      
+      if (this.plugins.has(toolManifest.id)) {
+        logger.warn(`[PluginRuntime] Distributed tool '${toolManifest.id}' from ${serverId} conflicts with existing tool. Skipping.`);
+        continue;
+      }
+      
+      // 标记为分布式插件并存储服务器ID
+      const distributedManifest = {
+        ...toolManifest,
+        type: 'distributed' as const,
+        serverId,
+        name: `[云端] ${toolManifest.name}`,
+      };
+      
+      // 存储到分布式工具表和总插件表
+      this.distributedTools.set(toolManifest.id, distributedManifest);
+      this.plugins.set(toolManifest.id, distributedManifest);
+      
+      logger.info(`[PluginRuntime] Registered distributed tool: ${distributedManifest.name} (${toolManifest.id}) from ${serverId}`);
+    }
+    
+    // 重建工具描述
+    this.rebuildVCPDescriptions();
+  }
+  
+  /**
+   * 注销来自指定分布式节点的所有工具
+   * 
+   * 参考：Plugin.js Line 1057-1075 (unregisterAllDistributedTools)
+   * 
+   * @param serverId - 分布式服务器ID
+   */
+  unregisterAllDistributedTools(serverId: string): void {
+    logger.info(`[PluginRuntime] Unregistering all tools from distributed server: ${serverId}`);
+    
+    let unregisteredCount = 0;
+    
+    for (const [id, manifest] of this.plugins.entries()) {
+      if ((manifest as any).serverId === serverId) {
+        this.plugins.delete(id);
+        this.distributedTools.delete(id);
+        unregisteredCount++;
+        logger.debug(`[PluginRuntime] Unregistered: ${id}`);
+      }
+    }
+    
+    if (unregisteredCount > 0) {
+      logger.info(`[PluginRuntime] Unregistered ${unregisteredCount} tools from server ${serverId}`);
+      // 重建工具描述
+      this.rebuildVCPDescriptions();
+    }
+  }
+  
+  /**
    * 卸载插件
    * 
    * @param name - 插件名称
